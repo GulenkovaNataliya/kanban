@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КАНБАН</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@700;900&family=Courier+Prime:wght@400;700&display=swap');
+
+        :root {
+            --color-bg: #0a0a0a;
+            --color-primary: #ff3366;
+            --color-secondary: #00ff88;
+            --color-tertiary: #ffcc00;
+            --color-text: #ffffff;
+            --color-text-dark: #000000;
+            --border-thick: 6px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier Prime', monospace;
+            background-color: var(--color-bg);
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,51,102,0.03) 2px, rgba(255,51,102,0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,255,136,0.03) 2px, rgba(0,255,136,0.03) 4px);
+            padding: 40px 20px;
+            color: var(--color-text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-family: 'Libre Franklin', sans-serif;
+            font-weight: 900;
+            font-size: 72px;
+            text-transform: uppercase;
+            letter-spacing: -3px;
+            color: var(--color-text);
+            margin-bottom: 50px;
+            text-align: left;
+            line-height: 0.9;
+            text-shadow:
+                4px 4px 0 var(--color-primary),
+                8px 8px 0 var(--color-secondary);
+        }
+
+        .add-task {
+            background-color: var(--color-secondary);
+            padding: 0;
+            margin-bottom: 40px;
+            border: var(--border-thick) solid var(--color-text);
+            box-shadow: 12px 12px 0 var(--color-primary);
+            position: relative;
+        }
+
+        .add-task input {
+            width: calc(100% - 180px);
+            padding: 24px;
+            border: none;
+            background: var(--color-text);
+            font-family: 'Courier Prime', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--color-text-dark);
+            text-transform: uppercase;
+            outline: none;
+        }
+
+        .add-task input::placeholder {
+            color: #666;
+            text-transform: none;
+        }
+
+        .add-task button {
+            width: 180px;
+            padding: 24px;
+            background-color: var(--color-primary);
+            color: var(--color-text);
+            border: none;
+            cursor: pointer;
+            font-family: 'Libre Franklin', sans-serif;
+            font-weight: 900;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .add-task button:hover {
+            background-color: var(--color-tertiary);
+            color: var(--color-text-dark);
+        }
+
+        .add-task button:active {
+            transform: translate(4px, 4px);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .column {
+            background-color: transparent;
+            padding: 0;
+            min-height: 500px;
+        }
+
+        .column h2 {
+            font-family: 'Libre Franklin', sans-serif;
+            font-weight: 900;
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: var(--color-text);
+            padding: 20px;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            border: var(--border-thick) solid var(--color-text);
+            background-color: var(--color-bg);
+            position: relative;
+        }
+
+        .column:nth-child(1) h2 {
+            background-color: var(--color-primary);
+            box-shadow: 8px 8px 0 rgba(255,51,102,0.3);
+        }
+
+        .column:nth-child(2) h2 {
+            background-color: var(--color-tertiary);
+            color: var(--color-text-dark);
+            box-shadow: 8px 8px 0 rgba(255,204,0,0.3);
+        }
+
+        .column:nth-child(3) h2 {
+            background-color: var(--color-secondary);
+            color: var(--color-text-dark);
+            box-shadow: 8px 8px 0 rgba(0,255,136,0.3);
+        }
+
+        .task {
+            background-color: var(--color-text);
+            padding: 20px;
+            margin-bottom: 16px;
+            border: var(--border-thick) solid var(--color-text-dark);
+            cursor: move;
+            transition: all 0.15s;
+            position: relative;
+            color: var(--color-text-dark);
+        }
+
+        .task:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 8px 8px 0 var(--color-primary);
+        }
+
+        .task.dragging {
+            opacity: 0.6;
+            transform: rotate(-3deg);
+        }
+
+        .tasks {
+            min-height: 100px;
+            transition: all 0.2s;
+            padding: 20px;
+            border: var(--border-thick) dashed transparent;
+        }
+
+        .tasks.drag-over {
+            border-color: var(--color-tertiary);
+            background-color: rgba(255,204,0,0.1);
+        }
+
+        .task-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .task-text {
+            flex: 1;
+            word-wrap: break-word;
+            font-weight: 700;
+            font-size: 16px;
+            line-height: 1.5;
+            text-transform: uppercase;
+        }
+
+        .delete-btn {
+            background-color: var(--color-text-dark);
+            color: var(--color-primary);
+            border: 3px solid var(--color-text-dark);
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Libre Franklin', sans-serif;
+            font-weight: 900;
+            font-size: 12px;
+            text-transform: uppercase;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .delete-btn:hover {
+            background-color: var(--color-primary);
+            color: var(--color-text);
+            transform: scale(1.1);
+        }
+
+        .move-btns {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .move-btn {
+            background-color: var(--color-text-dark);
+            color: var(--color-secondary);
+            border: 3px solid var(--color-text-dark);
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Libre Franklin', sans-serif;
+            font-weight: 900;
+            font-size: 14px;
+            transition: all 0.15s;
+        }
+
+        .move-btn:hover {
+            background-color: var(--color-secondary);
+            color: var(--color-text-dark);
+            transform: scale(1.1);
+        }
+
+        .move-btn:disabled {
+            background-color: #333;
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 48px;
+            }
+
+            .board {
+                grid-template-columns: 1fr;
+            }
+
+            .add-task input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .add-task button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>КАНБАН</h1>
+
+        <!-- Блок авторизации -->
+        <div id="authBlock" class="add-task" style="display: none;">
+            <input type="email" id="emailInput" placeholder="email...">
+            <button onclick="signIn()">LOGIN</button>
+        </div>
+
+        <!-- Блок добавления задач -->
+        <div id="taskBlock" class="add-task" style="display: none;">
+            <input type="text" id="taskInput" placeholder="новая задача...">
+            <button onclick="addTask()">ADD</button>
+            <button onclick="signOut()" style="background-color: #333; width: 100px;">EXIT</button>
+        </div>
+
+        <div class="board">
+            <div class="column">
+                <h2>To Do</h2>
+                <div id="todo" class="tasks"></div>
+            </div>
+            <div class="column">
+                <h2>In Progress</h2>
+                <div id="inprogress" class="tasks"></div>
+            </div>
+            <div class="column">
+                <h2>Done</h2>
+                <div id="done" class="tasks"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ============================================
+        // НАСТРОЙКА SUPABASE - ВСТАВЬТЕ СВОИ КЛЮЧИ!
+        // ============================================
+        const SUPABASE_URL = 'https://qcxsiwfacqeppotompyo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjeHNpd2ZhY3FlcHBvdG9tcHlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3NzM0NDIsImV4cCI6MjA4MDM0OTQ0Mn0.GzK863VzjyzoDGinhjdiD_2DAF_o82s4fHEYnso5rbw';
+
+        // Инициализация Supabase клиента
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let taskIdCounter = 0;
+        let currentUser = null;
+
+        // ============================================
+        // АВТОРИЗАЦИЯ
+        // ============================================
+        async function checkAuth() {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (session) {
+                currentUser = session.user;
+                document.getElementById('authBlock').style.display = 'none';
+                document.getElementById('taskBlock').style.display = 'block';
+                loadTasks();
+            } else {
+                document.getElementById('authBlock').style.display = 'block';
+                document.getElementById('taskBlock').style.display = 'none';
+            }
+        }
+
+        async function signIn() {
+            const email = document.getElementById('emailInput').value.trim();
+
+            if (!email) {
+                alert('Введите email');
+                return;
+            }
+
+            const { error } = await supabase.auth.signInWithOtp({
+                email: email,
+                options: {
+                    emailRedirectTo: window.location.href
+                }
+            });
+
+            if (error) {
+                console.error('Ошибка авторизации:', error);
+                alert('Ошибка отправки письма!');
+            } else {
+                alert('Проверьте почту! Мы отправили вам ссылку для входа.');
+            }
+        }
+
+        async function signOut() {
+            await supabase.auth.signOut();
+            location.reload();
+        }
+
+        // Слушаем изменения авторизации
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN') {
+                currentUser = session.user;
+                document.getElementById('authBlock').style.display = 'none';
+                document.getElementById('taskBlock').style.display = 'block';
+                loadTasks();
+                subscribeToChanges();
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                document.getElementById('authBlock').style.display = 'block';
+                document.getElementById('taskBlock').style.display = 'none';
+            }
+        });
+
+        // ============================================
+        // ЗАГРУЗКА ЗАДАЧ ИЗ БД ПРИ СТАРТЕ
+        // ============================================
+        async function loadTasks() {
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error('Ошибка загрузки задач:', error);
+                return;
+            }
+
+            // Очищаем колонки
+            document.getElementById('todo').innerHTML = '';
+            document.getElementById('inprogress').innerHTML = '';
+            document.getElementById('done').innerHTML = '';
+
+            // Отображаем задачи
+            data.forEach(task => {
+                const column = document.getElementById(task.status);
+                const taskElement = createTaskElement(task.text, task.id, task.status);
+                column.appendChild(taskElement);
+
+                // Обновляем счетчик ID
+                if (task.id >= taskIdCounter) {
+                    taskIdCounter = task.id + 1;
+                }
+            });
+        }
+
+        // ============================================
+        // ДОБАВЛЕНИЕ НОВОЙ ЗАДАЧИ
+        // ============================================
+        async function addTask() {
+            const input = document.getElementById('taskInput');
+            const taskText = input.value.trim();
+
+            if (taskText === '') {
+                alert('Пожалуйста, введите текст задачи');
+                return;
+            }
+
+            // Сохраняем в БД с user_id
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert([{
+                    text: taskText,
+                    status: 'todo',
+                    user_id: currentUser.id
+                }])
+                .select();
+
+            if (error) {
+                console.error('Ошибка добавления задачи:', error);
+                alert('Ошибка сохранения задачи!');
+                return;
+            }
+
+            // Добавляем на доску
+            const todoColumn = document.getElementById('todo');
+            const taskElement = createTaskElement(data[0].text, data[0].id, 'todo');
+            todoColumn.appendChild(taskElement);
+
+            input.value = '';
+            input.focus();
+        }
+
+        function createTaskElement(text, id, status) {
+            const taskDiv = document.createElement('div');
+            taskDiv.className = 'task';
+            taskDiv.setAttribute('data-id', id);
+            taskDiv.setAttribute('draggable', 'true');
+
+            // Drag and Drop events
+            taskDiv.addEventListener('dragstart', handleDragStart);
+            taskDiv.addEventListener('dragend', handleDragEnd);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'task-content';
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'task-text';
+            textSpan.textContent = text;
+
+            const moveBtnsDiv = document.createElement('div');
+            moveBtnsDiv.className = 'move-btns';
+
+            if (status !== 'todo') {
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'move-btn';
+                prevBtn.textContent = '←';
+                prevBtn.onclick = () => moveTask(id, status, 'prev');
+                moveBtnsDiv.appendChild(prevBtn);
+            }
+
+            if (status !== 'done') {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'move-btn';
+                nextBtn.textContent = '→';
+                nextBtn.onclick = () => moveTask(id, status, 'next');
+                moveBtnsDiv.appendChild(nextBtn);
+            }
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = 'DEL';
+            deleteBtn.onclick = () => deleteTask(id);
+
+            contentDiv.appendChild(textSpan);
+            contentDiv.appendChild(moveBtnsDiv);
+            contentDiv.appendChild(deleteBtn);
+            taskDiv.appendChild(contentDiv);
+
+            return taskDiv;
+        }
+
+        // Drag and Drop handlers
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.tasks').forEach(column => {
+                column.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            if (draggedElement !== null) {
+                const dropZone = this;
+                const taskId = draggedElement.getAttribute('data-id');
+                const taskText = draggedElement.querySelector('.task-text').textContent;
+
+                // Определяем новый статус по id колонки
+                const newStatus = dropZone.id;
+
+                // Обновляем в БД
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({ status: newStatus, updated_at: new Date() })
+                    .eq('id', taskId);
+
+                if (error) {
+                    console.error('Ошибка обновления задачи:', error);
+                    alert('Ошибка перемещения задачи!');
+                    return false;
+                }
+
+                // Удаляем старый элемент
+                draggedElement.remove();
+
+                // Создаем новый элемент в новой колонке
+                const newTaskElement = createTaskElement(taskText, taskId, newStatus);
+                dropZone.appendChild(newTaskElement);
+            }
+
+            this.classList.remove('drag-over');
+            return false;
+        }
+
+        // Инициализация drag and drop для колонок
+        document.addEventListener('DOMContentLoaded', function() {
+            const columns = document.querySelectorAll('.tasks');
+            columns.forEach(column => {
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('dragenter', handleDragEnter);
+                column.addEventListener('dragleave', handleDragLeave);
+                column.addEventListener('drop', handleDrop);
+            });
+
+            // Проверяем авторизацию при старте
+            checkAuth();
+        });
+
+        // ============================================
+        // ПЕРЕМЕЩЕНИЕ ЗАДАЧИ КНОПКАМИ
+        // ============================================
+        async function moveTask(id, currentStatus, direction) {
+            const statusMap = {
+                'todo': { next: 'inprogress' },
+                'inprogress': { prev: 'todo', next: 'done' },
+                'done': { prev: 'inprogress' }
+            };
+
+            const newStatus = statusMap[currentStatus][direction];
+            if (!newStatus) return;
+
+            const taskElement = document.querySelector(`[data-id="${id}"]`);
+            const taskText = taskElement.querySelector('.task-text').textContent;
+
+            // Обновляем в БД
+            const { error } = await supabase
+                .from('tasks')
+                .update({ status: newStatus, updated_at: new Date() })
+                .eq('id', id);
+
+            if (error) {
+                console.error('Ошибка перемещения задачи:', error);
+                alert('Ошибка перемещения задачи!');
+                return;
+            }
+
+            taskElement.remove();
+
+            const newColumn = document.getElementById(newStatus);
+            const newTaskElement = createTaskElement(taskText, id, newStatus);
+            newColumn.appendChild(newTaskElement);
+        }
+
+        // ============================================
+        // УДАЛЕНИЕ ЗАДАЧИ
+        // ============================================
+        async function deleteTask(id) {
+            const taskElement = document.querySelector(`[data-id="${id}"]`);
+            if (!taskElement || !confirm('Удалить эту задачу?')) {
+                return;
+            }
+
+            // Удаляем из БД
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error('Ошибка удаления задачи:', error);
+                alert('Ошибка удаления задачи!');
+                return;
+            }
+
+            taskElement.remove();
+        }
+
+        // ============================================
+        // REALTIME СИНХРОНИЗАЦИЯ
+        // ============================================
+        function subscribeToChanges() {
+            supabase
+                .channel('tasks-channel')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'tasks' },
+                    (payload) => {
+                        console.log('Получено изменение:', payload);
+
+                        // При любом изменении перезагружаем все задачи
+                        // (простой подход, в продакшене можно оптимизировать)
+                        loadTasks();
+                    }
+                )
+                .subscribe();
+        }
+
+        document.getElementById('taskInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+    </script>
+</body>
+</html>
